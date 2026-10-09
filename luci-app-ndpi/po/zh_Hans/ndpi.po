@@ -1,0 +1,786 @@
+# luci-app-ndpi - Simplified Chinese Translation
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Menu titles
+msgid "nDPI DPI Firewall"
+msgstr "nDPI DPI 防火墙"
+
+msgid "Dashboard"
+msgstr "仪表盘"
+
+msgid "Configuration"
+msgstr "基本配置"
+
+msgid "DPI Settings"
+msgstr "DPI 设置"
+
+msgid "Flow Collection"
+msgstr "流量采集"
+
+msgid "Alerts & Security"
+msgstr "告警与安全"
+
+msgid "Behavior Analysis"
+msgstr "行为分析"
+
+#. Dashboard view
+msgid "nDPI Deep Packet Inspection"
+msgstr "nDPI 深度包检测"
+
+msgid "Real-time traffic analysis & application protocol detection"
+msgstr "实时流量分析与应用协议识别"
+
+msgid "Last update:"
+msgstr "最后更新："
+
+msgid "Start nDPI service"
+msgstr "启动 nDPI 服务"
+
+msgid "Stop nDPI service"
+msgstr "停止 nDPI 服务"
+
+msgid "Restart nDPI service"
+msgstr "重启 nDPI 服务"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Active Flows"
+msgstr "活动流"
+
+msgid "Live Traffic"
+msgstr "实时流量"
+
+msgid "Alerts"
+msgstr "告警"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Checking..."
+msgstr "检测中..."
+
+msgid "Process ID"
+msgstr "进程 ID"
+
+msgid "Uptime"
+msgstr "运行时长"
+
+msgid "Memory Usage"
+msgstr "内存占用"
+
+msgid "System Memory"
+msgstr "系统内存"
+
+msgid "Total Memory"
+msgstr "总内存"
+
+msgid "Used Memory"
+msgstr "已用内存"
+
+msgid "Interface Traffic"
+msgstr "接口流量"
+
+msgid "RX Bytes"
+msgstr "接收字节数"
+
+msgid "TX Bytes"
+msgstr "发送字节数"
+
+msgid "RX Packets"
+msgstr "接收包数"
+
+msgid "TX Packets"
+msgstr "发送包数"
+
+msgid "Top Protocols"
+msgstr "主要协议"
+
+msgid "Loading protocol data..."
+msgstr "正在加载协议数据..."
+
+msgid "Traffic Rate (bytes/sec)"
+msgstr "流量速率（字节/秒）"
+
+msgid "Active Network Flows"
+msgstr "活动网络流"
+
+msgid "flows"
+msgstr "个流"
+
+msgid "alerts"
+msgstr "条告警"
+
+msgid "Source IP"
+msgstr "源 IP"
+
+msgid "Destination IP"
+msgstr "目的 IP"
+
+msgid "Protocol"
+msgstr "协议"
+
+msgid "Src Port"
+msgstr "源端口"
+
+msgid "Dst Port"
+msgstr "目的端口"
+
+msgid "Bytes"
+msgstr "字节数"
+
+msgid "Packets"
+msgstr "包数"
+
+msgid "Loading..."
+msgstr "加载中..."
+
+msgid "Live Connection Tracking"
+msgstr "实时连接跟踪"
+
+msgid "Source"
+msgstr "源地址"
+
+msgid "Destination"
+msgstr "目的地址"
+
+msgid "State"
+msgstr "状态"
+
+msgid "Security Alerts"
+msgstr "安全告警"
+
+msgid "Auto-refreshes every 5 seconds. Showing last %d alerts."
+msgstr "每 5 秒自动刷新。显示最近 %d 条告警。"
+
+msgid "Severity"
+msgstr "级别"
+
+msgid "Message"
+msgstr "消息"
+
+msgid "Loading alerts..."
+msgstr "正在加载告警..."
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "No protocol data yet. Make sure nDPI service is running and traffic is flowing."
+msgstr "暂无协议数据。请确认 nDPI 服务已运行且有流量经过。"
+
+msgid "DPI Analysis"
+msgstr "DPI 分析"
+
+msgid "Kernel Module"
+msgstr "内核模块"
+
+msgid "Conntrack (L4 only)"
+msgstr "Conntrack（仅四层）"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "unknown"
+msgstr "未知"
+
+msgid "Collecting traffic data..."
+msgstr "正在收集流量数据..."
+
+msgid "No active flows detected."
+msgstr "未检测到活动流。"
+
+msgid "DPI snapshot initializing — data appears on next refresh."
+msgstr "DPI 快照初始化中——下次刷新时显示数据。"
+
+msgid "No alerts recorded"
+msgstr "暂无告警记录"
+
+msgid "No active connections"
+msgstr "无活动连接"
+
+msgid "info"
+msgstr "信息"
+
+msgid "warning"
+msgstr "警告"
+
+msgid "error"
+msgstr "错误"
+
+#. Configuration view
+msgid "nDPI General Configuration"
+msgstr "nDPI 通用配置"
+
+msgid "Configure the core nDPI deep packet inspection service. nDPI identifies 450+ application protocols in real time, including encrypted TLS/QUIC traffic via fingerprinting."
+msgstr "配置 nDPI 深度包检测核心服务。nDPI 可实时识别 450 余种应用协议，包括通过指纹识别的 TLS/QUIC 加密流量。"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Enable nDPI"
+msgstr "启用 nDPI"
+
+msgid "Start the nDPI deep packet inspection engine."
+msgstr "启动 nDPI 深度包检测引擎。"
+
+msgid "Monitored Interface"
+msgstr "监听接口"
+
+msgid "Network interface to capture and analyze traffic on."
+msgstr "用于抓包并分析流量的网络接口。"
+
+msgid "Log Verbosity"
+msgstr "日志级别"
+
+msgid "Controls the detail level of nDPI diagnostic logging."
+msgstr "控制 nDPI 诊断日志的详细程度。"
+
+msgid "Silent"
+msgstr "静默"
+
+msgid "Normal"
+msgstr "普通"
+
+msgid "Verbose"
+msgstr "详细"
+
+msgid "Debug"
+msgstr "调试"
+
+msgid "JSON Flow Log Path"
+msgstr "JSON 流日志路径"
+
+msgid "File path where nDPI writes real-time flow data in JSON format. The dashboard reads from this file."
+msgstr "nDPI 以 JSON 格式写入实时流数据的文件路径，仪表盘从该文件读取数据。"
+
+msgid "Max Packets per Flow"
+msgstr "每流最大检测包数"
+
+msgid "Maximum number of packets to inspect per flow before committing a protocol verdict. Higher = more accurate, slower."
+msgstr "判定协议前每条流最多检测的数据包数量。值越大越准确，但速度越慢。"
+
+msgid "Enable Protocol Guessing"
+msgstr "启用协议猜测"
+
+msgid "When nDPI cannot identify a protocol with certainty, use heuristics to make an educated guess."
+msgstr "当 nDPI 无法确定协议时，使用启发式方法进行推断。"
+
+msgid "Decode Tunnels"
+msgstr "隧道解码"
+
+msgid "Inspect traffic inside GRE, VXLAN, IP-in-IP, and other tunnel encapsulations to classify the inner payload."
+msgstr "解析 GRE、VXLAN、IP-in-IP 等隧道封装内的流量，对内层载荷进行分类。"
+
+msgid "Track Payload"
+msgstr "载荷跟踪"
+
+msgid "Store a portion of the packet payload alongside flow data. Useful for debugging, but increases memory and CPU usage."
+msgstr "在流数据中保存部分报文载荷。便于调试，但会增加内存与 CPU 占用。"
+
+#. Flow Collection view
+msgid "Configure ingestion of flow records from external sources. nDPI can receive NetFlow (v5/v9), sFlow, and IPFIX from routers, switches, and software agents like nProbe, enabling visibility across your entire network — not just the local router."
+msgstr "配置外部流记录接入。nDPI 可接收来自路由器、交换机及 nProbe 等软件代理的 NetFlow（v5/v9）、sFlow 与 IPFIX 数据，实现全网可见性，而不仅限于本路由器。"
+
+msgid "Flow Collector"
+msgstr "流采集器"
+
+msgid "Enable Flow Collector"
+msgstr "启用流采集器"
+
+msgid "Start listening for incoming flow records. You must enable at least one protocol below (NetFlow, sFlow, or IPFIX)."
+msgstr "开始监听流入的流记录。需至少启用下方一种协议（NetFlow、sFlow 或 IPFIX）。"
+
+msgid "Listening Address"
+msgstr "监听地址"
+
+msgid "IP address to bind the collector to. Use 0.0.0.0 to listen on all interfaces, or a specific IP for tighter control."
+msgstr "采集器绑定的 IP 地址。使用 0.0.0.0 监听所有接口，或指定特定 IP 以获得更严格的控制。"
+
+msgid "NetFlow"
+msgstr "NetFlow"
+
+msgid "NetFlow is Cisco's protocol for exporting IP flow information. v5 is the classic fixed-format version; v9 is template-based and supports IPv6 and MPLS. Most enterprise routers support NetFlow export."
+msgstr "NetFlow 是思科用于导出 IP 流信息的协议。v5 为经典的固定格式版本；v9 基于模板，支持 IPv6 与 MPLS。多数企业级路由器支持 NetFlow 导出。"
+
+msgid "Enable NetFlow Receiver"
+msgstr "启用 NetFlow 接收器"
+
+msgid "NetFlow UDP Port"
+msgstr "NetFlow UDP 端口"
+
+msgid "Port to listen on for incoming NetFlow datagrams."
+msgstr "用于接收 NetFlow 数据报的监听端口。"
+
+msgid "NetFlow Version"
+msgstr "NetFlow 版本"
+
+msgid "Protocol version to accept. v9 is recommended for modern networks."
+msgstr "接受的协议版本，现代网络推荐使用 v9。"
+
+msgid "NetFlow v5 (fixed format)"
+msgstr "NetFlow v5（固定格式）"
+
+msgid "NetFlow v9 (template-based)"
+msgstr "NetFlow v9（基于模板）"
+
+msgid "Both v5 and v9"
+msgstr "v5 与 v9 均接受"
+
+msgid "sFlow"
+msgstr "sFlow"
+
+msgid "sFlow samples a subset of packets at configurable rates and exports the samples plus interface counters. It is widely supported by switches from many vendors and scales well in high-throughput environments."
+msgstr "sFlow 以可配置的采样率对部分报文采样，并导出样本及接口计数器。众多厂商的交换机均支持 sFlow，在高吞吐环境中表现良好。"
+
+msgid "Enable sFlow Receiver"
+msgstr "启用 sFlow 接收器"
+
+msgid "sFlow UDP Port"
+msgstr "sFlow UDP 端口"
+
+msgid "Port to listen on for incoming sFlow datagrams."
+msgstr "用于接收 sFlow 数据报的监听端口。"
+
+msgid "IPFIX"
+msgstr "IPFIX"
+
+msgid "IPFIX (IP Flow Information Export) is the IETF standard successor to NetFlow v9. It uses a flexible template mechanism and supports enterprise-specific information elements for rich flow metadata."
+msgstr "IPFIX（IP 流信息导出）是 IETF 制定的 NetFlow v9 后继标准。它采用灵活的模板机制，支持厂商自定义信息元素，可提供丰富的流元数据。"
+
+msgid "Enable IPFIX Receiver"
+msgstr "启用 IPFIX 接收器"
+
+msgid "IPFIX UDP Port"
+msgstr "IPFIX UDP 端口"
+
+msgid "Port to listen on for incoming IPFIX datagrams."
+msgstr "用于接收 IPFIX 数据报的监听端口。"
+
+#. Alerts & Security view
+msgid "Configure security alerting, SIEM integration, and threat detection. nDPI can detect port scans, SYN floods, DNS tunneling, and other suspicious network behavior patterns."
+msgstr "配置安全告警、SIEM 集成与威胁检测。nDPI 可检测端口扫描、SYN 洪水、DNS 隧道及其他可疑网络行为。"
+
+msgid "Alert Configuration"
+msgstr "告警配置"
+
+msgid "Enable Alerting"
+msgstr "启用告警"
+
+msgid "Turn on the alert engine. When active, nDPI raises alerts for security events, threshold breaches, and anomalous traffic."
+msgstr "开启告警引擎。启用后，nDPI 将针对安全事件、阈值越限与异常流量产生告警。"
+
+msgid "Max Stored Alerts"
+msgstr "最大告警存储数"
+
+msgid "Maximum number of alerts to keep in memory. Oldest alerts are discarded when this limit is reached."
+msgstr "内存中保留的告警条数上限，达到上限后将丢弃最早的告警。"
+
+msgid "Alert Log File"
+msgstr "告警日志文件"
+
+msgid "Path to the file where alerts are written. The dashboard reads the last 50 entries from this file."
+msgstr "告警写入的文件路径，仪表盘读取该文件的最后 50 条记录。"
+
+msgid "Log to Syslog"
+msgstr "写入系统日志"
+
+msgid "Forward alerts to the system log (logread). Useful for centralized log collection and SIEM integration."
+msgstr "将告警转发至系统日志（logread），便于集中日志采集与 SIEM 集成。"
+
+msgid "Notification Settings"
+msgstr "通知设置"
+
+msgid "Email Notifications"
+msgstr "邮件通知"
+
+msgid "Send email notifications for critical alerts. Requires a working SMTP configuration on the router (e.g., msmtp)."
+msgstr "针对严重告警发送邮件通知，需要路由器上已配置可用的 SMTP（如 msmtp）。"
+
+msgid "Recipient Email"
+msgstr "收件邮箱"
+
+msgid "Email address to receive alert notifications."
+msgstr "接收告警通知的邮箱地址。"
+
+msgid "Threshold Alerts"
+msgstr "阈值告警"
+
+msgid "Bandwidth Threshold (bytes/sec)"
+msgstr "带宽阈值（字节/秒）"
+
+msgid "Alert when a single host exceeds this bandwidth. Set to 0 to disable this check."
+msgstr "当单个主机带宽超过此值时告警，设为 0 则禁用该检查。"
+
+msgid "Connection Count Threshold"
+msgstr "连接数阈值"
+
+msgid "Alert when a single host has more than this many concurrent connections. Can indicate a compromised device or P2P activity."
+msgstr "当单个主机并发连接数超过此值时告警，可能意味着设备被入侵或存在 P2P 活动。"
+
+msgid "Security Detection"
+msgstr "安全检测"
+
+msgid "nDPI can detect various network attacks and suspicious behaviors. These integrate with MITRE ATT&CK tactics for security analysts."
+msgstr "nDPI 可检测多种网络攻击与可疑行为，并与 MITRE ATT&CK 战术对应，便于安全分析。"
+
+msgid "Port Scan Detection"
+msgstr "端口扫描检测"
+
+msgid "Detect hosts that probe many ports in quick succession. Maps to MITRE ATT&CK T1046 (Network Service Scanning)."
+msgstr "检测短时间内探测大量端口的主机，对应 MITRE ATT&CK T1046（网络服务扫描）。"
+
+msgid "SYN Flood Detection"
+msgstr "SYN 洪水检测"
+
+msgid "Detect TCP SYN flood denial-of-service patterns. Maps to MITRE ATT&CK T1498 (Network Denial of Service)."
+msgstr "检测 TCP SYN 洪水拒绝服务攻击特征，对应 MITRE ATT&CK T1498（网络拒绝服务）。"
+
+msgid "DNS Tunneling Detection"
+msgstr "DNS 隧道检测"
+
+msgid "Detect DNS queries with unusually long or encoded subdomains, which may indicate data exfiltration or C2 tunneling over DNS. Maps to MITRE ATT&CK T1071.004 (DNS-based Application Layer Protocol)."
+msgstr "检测子域名异常冗长或经过编码的 DNS 查询，可能意味着通过 DNS 的数据外泄或 C2 隧道，对应 MITRE ATT&CK T1071.004（基于 DNS 的应用层协议）。"
+
+#. Behavior Analysis view
+msgid "Traffic Behavior Analysis"
+msgstr "流量行为分析"
+
+msgid "Monitor periodic and recurring network flows to map active services and detect anomalies. Behavioral analysis learns what 'normal' looks like for your network and alerts when traffic patterns deviate significantly."
+msgstr "监测周期性及重复出现的网络流，梳理活跃服务并检测异常。行为分析会学习网络的“正常”基线，当流量模式显著偏离时发出告警。"
+
+msgid "Behavior Engine"
+msgstr "行为分析引擎"
+
+msgid "Enable Behavior Analysis"
+msgstr "启用行为分析"
+
+msgid "Activate the traffic behavior monitoring engine. It runs in the background, periodically scanning active flows for patterns."
+msgstr "启用流量行为监测引擎，在后台运行并周期性扫描活动流特征。"
+
+msgid "Periodic Flow Scanning"
+msgstr "周期流扫描"
+
+msgid "Scan flows at regular intervals to identify periodic, recurring connections such as NTP, heartbeats, polling, and cron-triggered traffic."
+msgstr "按固定间隔扫描流，识别 NTP、心跳、轮询及定时任务触发的周期性连接。"
+
+msgid "Scan Interval (seconds)"
+msgstr "扫描间隔（秒）"
+
+msgid "How often to run the periodic flow scanner. Lower values increase detection speed but use more CPU on resource-constrained devices."
+msgstr "周期流扫描的运行频率。数值越小检测越快，但在资源受限设备上占用更多 CPU。"
+
+msgid "Statistical Anomaly Detection"
+msgstr "统计异常检测"
+
+msgid "Compare current traffic patterns against a learned baseline. Alerts are raised when the deviation exceeds the configured threshold."
+msgstr "将当前流量模式与学习到的基线对比，偏差超过设定阈值时产生告警。"
+
+msgid "Baseline Window (hours)"
+msgstr "基线窗口（小时）"
+
+msgid "Number of hours of historical data to use as the normal baseline. A longer window produces a more stable model but adapts more slowly."
+msgstr "用于构建正常基线的历史数据时长。窗口越长模型越稳定，但适应变化更慢。"
+
+msgid "Deviation Threshold (sigma)"
+msgstr "偏差阈值（σ）"
+
+msgid "Number of standard deviations from the baseline mean that triggers an anomaly alert. Typical values: 2 = sensitive, 3 = balanced, 5 = conservative."
+msgstr "偏离基线均值多少个标准差时触发异常告警。典型值：2＝灵敏，3＝均衡，5＝保守。"
+
+msgid "Site Hierarchy"
+msgstr "站点层级"
+
+msgid "Group hosts and networks into logical sites for dashboard views. Inspired by ntopng 7.0's Sites feature, this allows you to see traffic patterns organized by physical location or network segment."
+msgstr "将主机与网络分组为逻辑站点，便于仪表盘展示。灵感来自 ntopng 7.0 的 Sites 功能，可按物理位置或网段查看流量模式。"
+
+msgid "Enable Site Hierarchy"
+msgstr "启用站点层级"
+
+msgid "Site Name"
+msgstr "站点名称"
+
+msgid "A human-readable name for this network site."
+msgstr "该网络站点便于识别的名称。"
+
+msgid "Grouping Mode"
+msgstr "分组方式"
+
+msgid "How to organize hosts into the site view."
+msgstr "主机归入站点视图的方式。"
+
+msgid "By Subnet"
+msgstr "按子网"
+
+msgid "By VLAN"
+msgstr "按 VLAN"
+
+msgid "By Interface"
+msgstr "按接口"
+
+msgid "Manual Assignment"
+msgstr "手动指定"
+
+#. DPI Settings view
+msgid "Traffic Analysis & Deep Packet Inspection"
+msgstr "流量分析与深度包检测"
+
+msgid "Configure nDPI's deep packet inspection engine and enable/disable individual protocol detection. nDPI 6.0 supports 480+ protocol signatures including TLS/QUIC fingerprinting, encrypted traffic classification, and industrial protocol detection."
+msgstr "配置 nDPI 深度包检测引擎，并可单独启停各协议识别。nDPI 6.0 支持 480 余种协议特征，涵盖 TLS/QUIC 指纹识别、加密流量分类及工控协议检测。"
+
+msgid "DPI Engine Settings"
+msgstr "DPI 引擎设置"
+
+msgid "TLS Fingerprinting (JA3/JA4)"
+msgstr "TLS 指纹识别（JA3/JA4）"
+
+msgid "Enable TLS client hello fingerprinting to identify applications by their TLS handshake patterns."
+msgstr "启用 TLS Client Hello 指纹识别，通过握手特征识别应用。"
+
+msgid "QUIC Protocol Detection"
+msgstr "QUIC 协议检测"
+
+msgid "Identify QUIC (HTTP/3) connections and extract SNI from the initial crypto frame."
+msgstr "识别 QUIC（HTTP/3）连接，并从初始加密帧中提取 SNI。"
+
+msgid "DNS Traffic Analysis"
+msgstr "DNS 流量分析"
+
+msgid "Parse DNS queries and responses to map domain names to IP flows."
+msgstr "解析 DNS 查询与响应，将域名映射到对应的 IP 流。"
+
+msgid "HTTP/HTTPS Header Analysis"
+msgstr "HTTP/HTTPS 头部分析"
+
+msgid "Inspect HTTP headers and HTTPS SNI to classify web traffic."
+msgstr "解析 HTTP 头部与 HTTPS SNI，对 Web 流量进行分类。"
+
+msgid "SSH Fingerprinting (HASSH)"
+msgstr "SSH 指纹识别（HASSH）"
+
+msgid "Generate HASSH fingerprints from SSH handshakes."
+msgstr "从 SSH 握手过程生成 HASSH 指纹。"
+
+msgid "JA3 Hash Generation"
+msgstr "JA3 哈希生成"
+
+msgid "Compute JA3 fingerprint hashes for every TLS client hello."
+msgstr "为每个 TLS Client Hello 计算 JA3 指纹哈希。"
+
+msgid "JA4+ Fingerprint Suite"
+msgstr "JA4+ 指纹套件"
+
+msgid "Enable JA4+ family of fingerprints (JA4, JA4S, JA4H, JA4L, JA4X)."
+msgstr "启用 JA4+ 指纹家族（JA4、JA4S、JA4H、JA4L、JA4X）。"
+
+msgid "HASSH Fingerprinting"
+msgstr "HASSH 指纹识别"
+
+msgid "Produce HASSH fingerprints from SSH key exchange parameters."
+msgstr "根据 SSH 密钥交换参数生成 HASSH 指纹。"
+
+msgid "Encrypted Traffic Classification"
+msgstr "加密流量分类"
+
+msgid "Classify encrypted traffic using packet size and timing analysis."
+msgstr "基于报文大小与时序分析对加密流量进行分类。"
+
+msgid "STUN/VoIP Call Detection"
+msgstr "STUN/VoIP 通话检测"
+
+msgid "Identify VoIP calls carried over STUN/TURN (WhatsApp, Teams, Zoom)."
+msgstr "识别经 STUN/TURN 承载的 VoIP 通话（WhatsApp、Teams、Zoom）。"
+
+#. DPI protocol categories
+msgid "Web & HTTP Protocols"
+msgstr "Web 与 HTTP 协议"
+
+msgid "HTTP, HTTPS, web browsers and web-based services."
+msgstr "HTTP、HTTPS、浏览器及各类 Web 服务。"
+
+msgid "DNS Protocols"
+msgstr "DNS 协议"
+
+msgid "Domain Name System protocols including encrypted variants."
+msgstr "域名系统协议，含各类加密变体。"
+
+msgid "Email Protocols"
+msgstr "邮件协议"
+
+msgid "Email sending and receiving protocols."
+msgstr "邮件收发相关协议。"
+
+msgid "VoIP & Video Conferencing"
+msgstr "VoIP 与视频会议"
+
+msgid "Voice-over-IP, video calls and conferencing protocols."
+msgstr "VoIP、视频通话与会议类协议。"
+
+msgid "Messaging & Chat"
+msgstr "即时通讯"
+
+msgid "Instant messaging and chat applications."
+msgstr "即时通讯与聊天类应用。"
+
+msgid "Social Media"
+msgstr "社交媒体"
+
+msgid "Social networking platforms."
+msgstr "社交网络平台。"
+
+msgid "Streaming & Media"
+msgstr "流媒体"
+
+msgid "Audio and video streaming services."
+msgstr "音视频流媒体服务。"
+
+msgid "Cloud Services & Providers"
+msgstr "云服务与厂商"
+
+msgid "Major cloud platforms and CDN services."
+msgstr "主流云平台与 CDN 服务。"
+
+msgid "Big Tech & Platform Traffic"
+msgstr "大型科技平台流量"
+
+msgid "Traffic from major technology companies and platforms."
+msgstr "大型科技公司与平台产生的流量。"
+
+msgid "Developer & Code Platforms"
+msgstr "开发与代码平台"
+
+msgid "Source code hosting, CI/CD and developer tools."
+msgstr "代码托管、CI/CD 及开发者工具。"
+
+msgid "VPN & Tunneling"
+msgstr "VPN 与隧道"
+
+msgid "VPN services and tunnel protocols."
+msgstr "VPN 服务与隧道协议。"
+
+msgid "Remote Access & Desktop"
+msgstr "远程访问与桌面"
+
+msgid "Remote desktop and screen-sharing protocols."
+msgstr "远程桌面与屏幕共享协议。"
+
+msgid "File Transfer"
+msgstr "文件传输"
+
+msgid "File transfer and synchronization protocols."
+msgstr "文件传输与同步协议。"
+
+msgid "Peer-to-Peer"
+msgstr "P2P 点对点"
+
+msgid "P2P file sharing and distributed protocols."
+msgstr "P2P 文件共享与分布式协议。"
+
+msgid "Gaming"
+msgstr "游戏"
+
+msgid "Online gaming platforms and game protocols."
+msgstr "在线游戏平台与游戏协议。"
+
+msgid "Cloud Gaming & Streaming"
+msgstr "云游戏与游戏串流"
+
+msgid "Cloud gaming and game streaming services."
+msgstr "云游戏与游戏串流服务。"
+
+msgid "Cryptocurrency & Mining"
+msgstr "加密货币与挖矿"
+
+msgid "Cryptocurrency protocols and mining traffic."
+msgstr "加密货币协议与挖矿流量。"
+
+msgid "Network Infrastructure"
+msgstr "网络基础设施"
+
+msgid "Core network and infrastructure protocols."
+msgstr "核心网络与基础设施协议。"
+
+msgid "Database Protocols"
+msgstr "数据库协议"
+
+msgid "Database and data store access protocols."
+msgstr "数据库与数据存储访问协议。"
+
+msgid "Message Queues & Middleware"
+msgstr "消息队列与中间件"
+
+msgid "Message brokers, queues and middleware protocols."
+msgstr "消息代理、队列及中间件协议。"
+
+msgid "Industrial Control Systems (ICS/SCADA)"
+msgstr "工业控制系统（ICS/SCADA）"
+
+msgid "Industrial automation, SCADA, and OT protocols. Critical for securing operational technology networks."
+msgstr "工业自动化、SCADA 与 OT 协议，对保障工控网络安全至关重要。"
+
+msgid "IoT & Smart Home"
+msgstr "物联网与智能家居"
+
+msgid "Internet of Things and smart home protocols."
+msgstr "物联网与智能家居协议。"
+
+msgid "Medical Protocols"
+msgstr "医疗协议"
+
+msgid "Healthcare and medical imaging protocols."
+msgstr "医疗与医学影像协议。"
+
+msgid "Network Equipment Vendors"
+msgstr "网络设备厂商"
+
+msgid "Vendor-specific management and monitoring traffic."
+msgstr "厂商专属的管理与监控流量。"
+
+msgid "Security & Antivirus"
+msgstr "安全与杀毒"
+
+msgid "Security tools and antivirus traffic."
+msgstr "安全工具与杀毒软件流量。"
+
+msgid "Proton Suite"
+msgstr "Proton 套件"
+
+msgid "Proton privacy-focused services."
+msgstr "Proton 隐私保护系列服务。"
+
+msgid "Yandex Services"
+msgstr "Yandex 服务"
+
+msgid "Yandex platform services."
+msgstr "Yandex 平台各项服务。"
+
+msgid "Speed Test & Network Tools"
+msgstr "测速与网络工具"
+
+msgid "Network speed testing and diagnostic tools."
+msgstr "网络测速与诊断工具。"
+
+msgid "Game Boosters & Accelerators"
+msgstr "游戏加速器"
+
+msgid "Game acceleration and network optimization services."
+msgstr "游戏加速与网络优化服务。"
+
+msgid "Miscellaneous Protocols"
+msgstr "其他协议"
+
+msgid "Other application and transport protocols."
+msgstr "其他应用及传输层协议。"

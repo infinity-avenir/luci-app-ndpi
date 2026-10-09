@@ -6,38 +6,366 @@
 . /usr/share/libubox/jshn.sh
 
 # ---------------------------------------------------------------
-# Helper: read nDPI service status
+# DPI snapshot engine
+# ndpiReader only writes JSON at exit. We run a short-lived capture
+# instance in the background; when killed with SIGINT it dumps the
+# accumulated DPI results to a JSON file that the API reads on the
+# next refresh.
+# ---------------------------------------------------------------
+SNAPSHOT_FILE="/tmp/ndpi_snapshot.json"
+SNAPSHOT_INTERVAL=20	# min seconds between captures
+SNAPSHOT_DURATION=5	# seconds to capture before SIGINT
+SNAPSHOT_TS="/tmp/.ndpi_snap_ts"
+SNAPSHOT_ERR="/tmp/ndpi_snap_err.log"
+DBG_TMP="/tmp/.ndpi_rpcd.$$"
+
+cleanup() {
+	rm -f "$DBG_TMP" "$DBG_TMP.flows" "$DBG_TMP.protos" "$DBG_TMP.conns"
+}
+trap cleanup EXIT
+
+# ---------------------------------------------------------------
+# AWK helpers embedded in the parser programs below:
+#   jesc(s)        - escape a string for JSON output
+#   jstr(line,key) - extract "key":"value" (string value)
+#   jnum(line,key) - extract "key":123 or "key":"123" (numeric value)
+#   jany(line,key) - extract value as string regardless of quoting
+# ---------------------------------------------------------------
+AWK_FUNCS='
+function jesc(s) {
+	gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s); gsub(/\t/, "\\t", s);
+	return s;
+}
+function jstr(line, key,   pat, s) {
+	pat = "\"" key "\"[ \t]*:[ \t]*\"";
+	if (match(line, pat)) {
+		s = substr(line, RSTART + RLENGTH);
+		if (match(s, /^[^"]*/))
+			return substr(s, RSTART, RLENGTH);
+	}
+	return "";
+}
+function jnum(line, key,   pat, s) {
+	pat = "\"" key "\"[ \t]*:[ \t]*\"?";
+	if (match(line, pat)) {
+		s = substr(line, RSTART + RLENGTH);
+		if (match(s, /^-?[0-9]+(\.[0-9]+)?/))
+			return substr(s, RSTART, RLENGTH) + 0;
+	}
+	return 0;
+}
+function jany(line, key,   v) {
+	v = jstr(line, key);
+	if (v != "") return v;
+	v = jnum(line, key);
+	return (v != 0) ? v : "";
+}
+# DPI protocol name: prefer the nested "ndpi":{...,"proto":"X"} block,
+# then fall back to the various flat field names used by different
+# ndpiReader versions.
+function jproto(line,   nd, p) {
+	if (match(line, /"ndpi"[ \t]*:[ \t]*\{[^}]*/)) {
+		nd = substr(line, RSTART, RLENGTH);
+		p = jstr(nd, "proto");
+		if (p != "") return p;
+	}
+	p = jstr(line, "detected.protocol.name"); if (p != "") return p;
+	p = jstr(line, "detected_protocol_name"); if (p != "") return p;
+	p = jstr(line, "ndpi_proto");             if (p != "") return p;
+	p = jstr(line, "app_protocol");           if (p != "") return p;
+	p = jstr(line, "proto");                  if (p != "") return p;
+	p = jstr(line, "protocol");               if (p != "") return p;
+	p = jstr(line, "detected_protocol");      if (p != "") return p;
+	return "";
+}
+function jcategory(line,   nd) {
+	if (match(line, /"ndpi"[ \t]*:[ \t]*\{[^}]*/)) {
+		nd = substr(line, RSTART, RLENGTH);
+		return jstr(nd, "category");
+	}
+	return "";
+}
+'
+
+# Aggregate NDJSON lines from stdin into per-protocol JSON objects,
+# one object per output line. Prints nothing when no protocols found.
+awk_proto_stats() {
+	awk "$AWK_FUNCS"'
+	/^[ \t]*\{/ {
+		proto = jproto($0);
+		if (proto == "" || proto == "Unknown") next;
+
+		byt = jnum($0, "bytes");   if (!byt) byt = jnum($0, "flow.bytes");
+		pkt = jnum($0, "packets"); if (!pkt) pkt = jnum($0, "flow.packets");
+
+		if (!(proto in cnt)) {
+			cnt[proto] = 0; byts[proto] = 0; pkts[proto] = 0;
+			cats[proto] = jcategory($0);
+		}
+		cnt[proto]++; byts[proto] += byt; pkts[proto] += pkt;
+	}
+	END {
+		for (p in cnt)
+			printf "{\"protocol\":\"%s\",\"count\":%d,\"bytes\":%d,\"packets\":%d,\"category\":\"%s\"}\n",
+				jesc(p), cnt[p], byts[p], pkts[p], jesc(cats[p]);
+	}'
+}
+
+# Parse NDJSON lines from stdin into flow JSON objects (max 200),
+# one object per output line.
+awk_flow_lines() {
+	awk "$AWK_FUNCS"'
+	/^[ \t]*\{/ {
+		if (n >= 200) next;
+		proto = jproto($0);
+
+		src = jany($0, "src_ip");   if (src == "") src = jany($0, "src.ip");
+		if (src == "") src = jany($0, "src");
+		dst = jany($0, "dest_ip");  if (dst == "") dst = jany($0, "dst_ip");
+		if (dst == "") dst = jany($0, "dst.ip");
+		if (dst == "") dst = jany($0, "dst");
+		sp  = jany($0, "src_port"); if (sp == "")  sp  = jany($0, "src.port");
+		dp  = jany($0, "dst_port"); if (dp == "")  dp  = jany($0, "dst.port");
+		byt = jnum($0, "bytes");    if (!byt) byt = jnum($0, "flow.bytes");
+		pkt = jnum($0, "packets");  if (!pkt) pkt = jnum($0, "flow.packets");
+
+		if (src == "" && dst == "") next;
+		printf "{\"src_ip\":\"%s\",\"dst_ip\":\"%s\",\"protocol\":\"%s\",\"src_port\":\"%s\",\"dst_port\":\"%s\",\"bytes\":%d,\"packets\":%d}\n",
+			jesc(src), jesc(dst), jesc(proto), jesc(sp), jesc(dp), byt, pkt;
+		n++;
+	}'
+}
+
+# ---------------------------------------------------------------
+# DPI snapshot trigger (throttled, backgrounded)
+# ---------------------------------------------------------------
+trigger_dpi_snapshot() {
+	command -v ndpiReader >/dev/null 2>&1 || return 0
+
+	# Only run while the main ndpiReader service is active
+	local pids count=0
+	pids=$(pidof ndpiReader 2>/dev/null)
+	for p in $pids; do count=$((count + 1)); done
+	[ "$count" -lt 1 ] && return 0	# service not running
+	[ "$count" -gt 1 ] && return 0	# snapshot already in progress
+
+	# Throttle: skip if triggered recently
+	local ts=0 now
+	now=$(date +%s)
+	[ -f "$SNAPSHOT_TS" ] && read -r ts < "$SNAPSHOT_TS"
+	ts=${ts:-0}
+	[ $((now - ts)) -lt "$SNAPSHOT_INTERVAL" ] && return 0
+	echo "$now" > "$SNAPSHOT_TS"
+
+	# Resolve interface from UCI config
+	local iface
+	iface=$(uci -q get ndpi.global.interface)
+	iface="${iface:-br-lan}"
+	# Sanitize interface name
+	iface=$(printf '%s' "$iface" | tr -cd '[:alnum:]_.-')
+	[ -z "$iface" ] && iface="br-lan"
+
+	# Launch background snapshot:
+	# 1. Start ndpiReader capturing on the interface (packet limit as safety)
+	# 2. Sleep SNAPSHOT_DURATION seconds
+	# 3. Send SIGINT — ndpiReader dumps JSON on exit
+	#    (SIGTERM does NOT trigger JSON output in most ndpiReader builds)
+	# 4. If still alive after grace period, force-kill
+	(
+		ndpiReader -i "$iface" -K json -k "$SNAPSHOT_FILE" -n 1000 \
+			2>"$SNAPSHOT_ERR" &
+		P=$!
+		sleep "$SNAPSHOT_DURATION"
+		kill -2 "$P" 2>/dev/null
+		sleep 1
+		kill -9 "$P" 2>/dev/null
+		wait "$P" 2>/dev/null
+	) >/dev/null 2>&1 &
+}
+
+# ---------------------------------------------------------------
+# Protocol data sources (each prints JSON objects, one per line)
+# ---------------------------------------------------------------
+read_snapshot_protocols() {
+	[ -f "$SNAPSHOT_FILE" ] || return 1
+	awk_proto_stats < "$SNAPSHOT_FILE"
+}
+
+read_xtndpi_protocols() {
+	local f out
+	for f in /proc/net/xt_ndpi/proto /proc/net/xt_ndpi/protocols \
+			/sys/module/xt_ndpi/proto; do
+		[ -f "$f" ] || continue
+		out=$(awk "$AWK_FUNCS"'
+			/^[ \t]*(#|$)/ { next }
+			NF >= 4 && $1 ~ /^[0-9]+$/ && $2 != "Unknown" && ($3+0) > 0 {
+				cnt[$2] += $3;
+				byts[$2] += $4;
+			}
+			END {
+				for (p in cnt)
+					printf "{\"protocol\":\"%s\",\"count\":%d,\"bytes\":%d}\n",
+						jesc(p), cnt[p], byts[p];
+			}
+		' "$f")
+		if [ -n "$out" ]; then
+			printf '%s\n' "$out"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Dump each element of a JSON array document, one serialized object per line.
+read_jsondoc() {
+	local file="$1" out sel
+	[ -f "$file" ] || return 1
+	for sel in '@.flows[*]' '@[*]'; do
+		out=$(jsonfilter -i "$file" -e "$sel" 2>/dev/null)
+		if [ -n "$out" ]; then
+			printf '%s\n' "$out"
+			return 0
+		fi
+	done
+	return 1
+}
+
+read_syslog_protocols() {
+	logread 2>/dev/null | grep -i ndpi | tail -500 | awk "$AWK_FUNCS"'
+	{
+		while (match($0, /\[proto:[ \t]*[^\/]*\/[^]]*\]/)) {
+			name = substr($0, RSTART, RLENGTH);
+			sub(/.*\//, "", name); sub(/\].*/, "", name);
+			gsub(/^[ \t]+|[ \t]+$/, "", name);
+			if (name != "" && name != "Unknown") cnt[name]++;
+			$0 = substr($0, RSTART + RLENGTH);
+		}
+		while (match($0, /detected[ \t]+[^ \t]+[ \t]+as[ \t]+[^ \t]+/)) {
+			m = substr($0, RSTART, RLENGTH);
+			sub(/.*as[ \t]+/, "", m);
+			if (m != "Unknown") cnt[m]++;
+			$0 = substr($0, RSTART + RLENGTH);
+		}
+	}
+	END {
+		for (p in cnt)
+			printf "{\"protocol\":\"%s\",\"count\":%d,\"bytes\":0}\n", jesc(p), cnt[p];
+	}'
+}
+
+read_conntrack_protocols() {
+	[ -f /proc/net/nf_conntrack ] || return 1
+	awk "$AWK_FUNCS"'
+	{
+		p = toupper($3);
+		if (p != "") cnt[p]++;
+	}
+	END {
+		for (p in cnt)
+			printf "{\"protocol\":\"%s\",\"count\":%d,\"bytes\":0}\n", jesc(p), cnt[p];
+	}' /proc/net/nf_conntrack
+}
+
+# ---------------------------------------------------------------
+# Flow data sources (each prints JSON objects, one per line)
+# ---------------------------------------------------------------
+read_snapshot_flows() {
+	[ -f "$SNAPSHOT_FILE" ] || return 1
+	awk_flow_lines < "$SNAPSHOT_FILE"
+}
+
+read_conntrack_flows() {
+	[ -f /proc/net/nf_conntrack ] || return 1
+	awk "$AWK_FUNCS"'
+	{
+		if (n >= 200) next;
+		src = ""; dst = ""; sp = ""; dp = ""; byt = 0; pkt = 0;
+		if (match($0, /src=[^ \t]+/))  src = substr($0, RSTART+4, RLENGTH-4);
+		if (match($0, /dst=[^ \t]+/))  dst = substr($0, RSTART+4, RLENGTH-4);
+		if (match($0, /sport=[0-9]+/)) sp  = substr($0, RSTART+6, RLENGTH-6);
+		if (match($0, /dport=[0-9]+/)) dp  = substr($0, RSTART+6, RLENGTH-6);
+		if (match($0, /bytes=[0-9]+/)) byt = substr($0, RSTART+6, RLENGTH-6) + 0;
+		if (match($0, /packets=[0-9]+/)) pkt = substr($0, RSTART+8, RLENGTH-8) + 0;
+		if (src == "" || dst == "") next;
+		printf "{\"src_ip\":\"%s\",\"dst_ip\":\"%s\",\"protocol\":\"%s\",\"src_port\":\"%s\",\"dst_port\":\"%s\",\"bytes\":%d,\"packets\":%d}\n",
+			jesc(src), jesc(dst), jesc(toupper($3)), sp, dp, byt, pkt;
+		n++;
+	}' /proc/net/nf_conntrack
+}
+
+# ---------------------------------------------------------------
+# Emit {"protocols":[...],"source":"X"} from per-line JSON objects
+# ---------------------------------------------------------------
+emit_objects() {
+	# $1 = file with one JSON object per line, $2 = array key,
+	# $3 = source label (optional), $4 = include total flag (optional)
+	local first=1 total=0 obj
+	printf "{\"%s\":[" "$2"
+	while IFS= read -r obj; do
+		[ -n "$obj" ] || continue
+		[ $first -eq 0 ] && printf ","
+		printf '%s' "$obj"
+		first=0
+		total=$((total + 1))
+	done < "$1"
+	if [ -n "$4" ]; then
+		printf '],"total":%d,"source":"%s"}\n' "$total" "$3"
+	else
+		printf '],"source":"%s"}\n' "$3"
+	fi
+}
+
+# ---------------------------------------------------------------
+# ubus method implementations
 # ---------------------------------------------------------------
 get_service_status() {
-	local pid="" running="false" mem_rss="0" mem_virt="0" uptime_secs="0"
+	local pid pids running="0" mem_rss=0 mem_virt=0 uptime_secs=0
+	local total=0 free=0 available=0 buffers=0 cached=0
 
-	pid=$(pidof ndpiReader 2>/dev/null)
-	pid=${pid%% *}
+	pids=$(pidof ndpiReader 2>/dev/null)
+	pid=${pids%% *}
 	if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
-		running="true"
-		mem_rss=$(awk '/VmRSS/{print $2}' /proc/$pid/status 2>/dev/null || echo 0)
-		mem_virt=$(awk '/VmSize/{print $2}' /proc/$pid/status 2>/dev/null || echo 0)
-		local start_time
-		start_time=$(stat -c %Y /proc/$pid 2>/dev/null || echo 0)
-		local now
-		now=$(date +%s)
-		uptime_secs=$((now - start_time))
+		running=1
+		mem_rss=$(awk '/^VmRSS:/{print $2}' /proc/$pid/status 2>/dev/null)
+		mem_virt=$(awk '/^VmSize:/{print $2}' /proc/$pid/status 2>/dev/null)
+
+		# Process uptime from /proc/<pid>/stat field 22 (starttime in
+		# jiffies) and /proc/uptime. stat -c %Y is unreliable on BusyBox.
+		local stat_line starttime clk sys_up
+		stat_line=$(sed -n 's/^.*) //p' /proc/$pid/stat 2>/dev/null)
+		starttime=$(echo "$stat_line" | awk '{print $20}')
+		clk=$(getconf CLK_TCK 2>/dev/null || echo 100)
+		clk=${clk:-100}
+		sys_up=$(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)
+		if [ -n "$starttime" ] && [ -n "$sys_up" ]; then
+			uptime_secs=$((sys_up - starttime / clk))
+			[ "$uptime_secs" -lt 0 ] && uptime_secs=0
+		fi
 	fi
+
+	total=$(awk '/^MemTotal:/{print $2}' /proc/meminfo 2>/dev/null)
+	free=$(awk '/^MemFree:/{print $2}' /proc/meminfo 2>/dev/null)
+	available=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo 2>/dev/null)
+	buffers=$(awk '/^Buffers:/{print $2}' /proc/meminfo 2>/dev/null)
+	cached=$(awk '/^Cached:/{print $2}' /proc/meminfo 2>/dev/null)
 
 	json_init
 	json_add_boolean running "$running"
 	json_add_string pid "${pid:-N/A}"
-	json_add_int memory_rss "$mem_rss"
-	json_add_int memory_virtual "$mem_virt"
-	json_add_int uptime "$uptime_secs"
+	json_add_int memory_rss "${mem_rss:-0}"
+	json_add_int memory_virtual "${mem_virt:-0}"
+	json_add_int uptime "${uptime_secs:-0}"
+	json_add_object system_memory
+	json_add_int total "${total:-0}"
+	json_add_int free "${free:-0}"
+	json_add_int available "${available:-0}"
+	json_add_int buffers "${buffers:-0}"
+	json_add_int cached "${cached:-0}"
+	json_close_object
 	json_dump
 }
 
-# ---------------------------------------------------------------
-# Helper: read system memory info
-# ---------------------------------------------------------------
 get_system_memory() {
-	json_init
 	local total free available buffers cached
 	total=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
 	free=$(awk '/^MemFree:/{print $2}' /proc/meminfo)
@@ -45,6 +373,7 @@ get_system_memory() {
 	buffers=$(awk '/^Buffers:/{print $2}' /proc/meminfo)
 	cached=$(awk '/^Cached:/{print $2}' /proc/meminfo)
 
+	json_init
 	json_add_int total "${total:-0}"
 	json_add_int free "${free:-0}"
 	json_add_int available "${available:-0}"
@@ -53,114 +382,146 @@ get_system_memory() {
 	json_dump
 }
 
-# ---------------------------------------------------------------
-# Helper: get flow statistics from ndpiReader JSON
-# ---------------------------------------------------------------
 get_flow_stats() {
-	local json_log
-	json_log=$(uci -q get ndpi.global.json_log)
-	json_log="${json_log:-/tmp/ndpi_flows.json}"
+	trigger_dpi_snapshot
 
-	if [ -f "$json_log" ]; then
-		cat "$json_log" 2>/dev/null
-	else
-		echo '{"flows":[],"total":0}'
+	local json_log tmp="$DBG_TMP.flows" source="none"
+	json_log=$(uci -q get ndpi.global.json_log)
+	json_log=${json_log:-/tmp/ndpi_flows.json}
+	: > "$tmp"
+
+	# Method 0: DPI snapshot flows (real DPI-classified data)
+	read_snapshot_flows > "$tmp" 2>/dev/null
+	[ -s "$tmp" ] && source="dpi_snapshot"
+
+	# Method 1: NDJSON from flow log (one JSON object per line)
+	if [ ! -s "$tmp" ]; then
+		[ -f "$json_log" ] && awk_flow_lines < "$json_log" > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="json_ndjson"
 	fi
+
+	# Method 2: single JSON document ({flows:[...]} or bare array)
+	if [ ! -s "$tmp" ]; then
+		read_jsondoc "$json_log" 2>/dev/null | awk_flow_lines > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="json_single"
+	fi
+
+	# Method 3: fallback — /proc/net/nf_conntrack
+	if [ ! -s "$tmp" ]; then
+		read_conntrack_flows > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="conntrack"
+	fi
+
+	emit_objects "$tmp" flows "$source" 1
+	rm -f "$tmp"
 }
 
-# ---------------------------------------------------------------
-# Helper: get detected protocols summary
-# ---------------------------------------------------------------
 get_protocol_stats() {
-	local json_log
-	json_log=$(uci -q get ndpi.global.json_log)
-	json_log="${json_log:-/tmp/ndpi_flows.json}"
+	trigger_dpi_snapshot
 
-	if [ -f "$json_log" ]; then
-		# Parse flows and aggregate protocol counts
-		awk '
-		BEGIN { print "[" }
-		/"detected.protocol.name"/ {
-			gsub(/[",]/, "", $2)
-			proto[$2]++
-		}
-		END {
-			first=1
-			for (p in proto) {
-				if (!first) printf ","
-				printf "{\"protocol\":\"%s\",\"count\":%d,\"bytes\":0}", p, proto[p]
-				first=0
-			}
-			print "]"
-		}' "$json_log" 2>/dev/null
-	else
-		echo "[]"
+	local json_log tmp="$DBG_TMP.protos" source="none"
+	json_log=$(uci -q get ndpi.global.json_log)
+	json_log=${json_log:-/tmp/ndpi_flows.json}
+	: > "$tmp"
+
+	# Method 0: DPI snapshot (short-lived ndpiReader capture)
+	read_snapshot_protocols > "$tmp" 2>/dev/null
+	[ -s "$tmp" ] && source="dpi_snapshot"
+
+	# Method 1: nDPI kernel module /proc/net/xt_ndpi/proto
+	if [ ! -s "$tmp" ]; then
+		read_xtndpi_protocols > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="xt_ndpi"
 	fi
+
+	# Method 2: NDJSON from flow log
+	if [ ! -s "$tmp" ]; then
+		[ -f "$json_log" ] && awk_proto_stats < "$json_log" > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="json_ndjson"
+	fi
+
+	# Method 3: single JSON document
+	if [ ! -s "$tmp" ]; then
+		read_jsondoc "$json_log" 2>/dev/null | awk_proto_stats > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="json_single"
+	fi
+
+	# Method 4: parse ndpiReader output from syslog
+	if [ ! -s "$tmp" ]; then
+		read_syslog_protocols > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="syslog"
+	fi
+
+	# Method 5: fallback — conntrack L4
+	if [ ! -s "$tmp" ]; then
+		read_conntrack_protocols > "$tmp" 2>/dev/null
+		[ -s "$tmp" ] && source="conntrack"
+	fi
+
+	emit_objects "$tmp" protocols "$source"
+	rm -f "$tmp"
 }
 
-# ---------------------------------------------------------------
-# Helper: get alerts
-# ---------------------------------------------------------------
 get_alerts() {
-	local alert_log count
+	local alert_log count="$1" line
 	alert_log=$(uci -q get ndpi.alerts.alert_log)
-	alert_log="${alert_log:-/tmp/ndpi_alerts.log}"
-	count="${1:-50}"
+	alert_log=${alert_log:-/tmp/ndpi_alerts.log}
+	count=${count:-50}
 
 	json_init
 	json_add_array alerts
 
 	if [ -f "$alert_log" ]; then
-		tail -n "$count" "$alert_log" | while IFS= read -r line; do
+		tail -n "$count" "$alert_log" > "$DBG_TMP" 2>/dev/null
+		while IFS= read -r line; do
 			json_add_object ""
 			json_add_string message "$line"
+			json_add_string source "alert_log"
 			json_close_object
-		done
+		done < "$DBG_TMP"
 	fi
 
-	# Also pull from syslog
-	logread 2>/dev/null | grep -i "ndpi" | tail -n "$count" | while IFS= read -r line; do
+	logread 2>/dev/null | grep -i ndpi | tail -n "$count" > "$DBG_TMP" 2>/dev/null
+	while IFS= read -r line; do
+		[ -n "$line" ] || continue
 		json_add_object ""
 		json_add_string message "$line"
 		json_add_string source "syslog"
 		json_close_object
-	done
+	done < "$DBG_TMP"
+	rm -f "$DBG_TMP"
 
 	json_close_array
 	json_dump
 }
 
-# ---------------------------------------------------------------
-# Helper: get live traffic (conntrack + nDPI classification)
-# ---------------------------------------------------------------
 get_live_traffic() {
-	local interface
-	interface=$(uci -q get ndpi.global.interface)
-	interface="${interface:-br-lan}"
-
-	json_init
-	json_add_array connections
-
-	# Read from conntrack
-	if [ -f /proc/net/nf_conntrack ]; then
-		head -100 /proc/net/nf_conntrack 2>/dev/null | while IFS= read -r line; do
-			json_add_object ""
-			json_add_string raw "$line"
-			json_close_object
-		done
-	fi
-
-	json_close_array
-	json_dump
+	local tmp="$DBG_TMP.conns"
+	awk "$AWK_FUNCS"'
+	{
+		if (n >= 100) next;
+		src = ""; dst = ""; sp = ""; dp = ""; state = "";
+		if (match($0, /src=[^ \t]+/))  src = substr($0, RSTART+4, RLENGTH-4);
+		if (match($0, /dst=[^ \t]+/))  dst = substr($0, RSTART+4, RLENGTH-4);
+		if (match($0, /sport=[0-9]+/)) sp  = substr($0, RSTART+6, RLENGTH-6);
+		if (match($0, /dport=[0-9]+/)) dp  = substr($0, RSTART+6, RLENGTH-6);
+		if (match($0, /ESTABLISHED|TIME_WAIT|SYN_SENT|SYN_RECV|FIN_WAIT|CLOSE_WAIT|CLOSE|LAST_ACK|LISTEN/))
+			state = substr($0, RSTART, RLENGTH);
+		if (src == "" || dst == "") next;
+		srcport = src (sp != "" ? ":" sp : "");
+		dstport = dst (dp != "" ? ":" dp : "");
+		printf "{\"protocol\":\"%s\",\"src\":\"%s\",\"dst\":\"%s\",\"state\":\"%s\",\"raw\":\"%s\"}\n",
+			jesc(toupper($3)), jesc(srcport), jesc(dstport), jesc(state), jesc($0);
+		n++;
+	}' /proc/net/nf_conntrack 2>/dev/null > "$tmp"
+	emit_objects "$tmp" connections ""
+	rm -f "$tmp"
 }
 
-# ---------------------------------------------------------------
-# Helper: get interface traffic stats
-# ---------------------------------------------------------------
 get_interface_stats() {
 	local interface
 	interface=$(uci -q get ndpi.global.interface)
-	interface="${interface:-br-lan}"
+	interface=${interface:-br-lan}
 
 	json_init
 	if [ -d "/sys/class/net/$interface" ]; then
@@ -177,12 +538,125 @@ get_interface_stats() {
 	json_dump
 }
 
+# List network devices (/sys/class/net) plus UCI logical interfaces,
+# deduplicated, for the "Monitored Interface" dropdown.
+add_iface_entry() {
+	local name="$1"
+	[ -n "$name" ] || return 0
+	[ "$name" = "lo" ] && return 0
+	case "$seen" in
+		*" $name "*) return 0 ;;
+	esac
+	seen="$seen$name "
+	json_add_string "" "$name"
+}
+
+get_interfaces() {
+	local d seen=" "
+	json_init
+	json_add_array interfaces
+	for d in /sys/class/net/*; do
+		add_iface_entry "${d##*/}"
+	done
+	config_load network
+	config_foreach add_iface_entry interface
+	json_close_array
+	json_dump
+}
+
+# Debug endpoint: shows which data sources exist on this router
+get_debug() {
+	local json_log pids pid f line cnt=0 ts now
+	json_log=$(uci -q get ndpi.global.json_log)
+	json_log=${json_log:-/tmp/ndpi_flows.json}
+
+	json_init
+	json_add_string json_log_path "$json_log"
+	if [ -f "$json_log" ]; then
+		json_add_boolean json_log_exists 1
+		json_add_int json_log_size "$(wc -c < "$json_log" 2>/dev/null || echo 0)"
+		json_add_array json_log_first_lines
+		head -5 "$json_log" 2>/dev/null | cut -c1-300 > "$DBG_TMP"
+		while IFS= read -r line; do
+			json_add_string "" "$line"
+		done < "$DBG_TMP"
+		json_close_array
+	else
+		json_add_boolean json_log_exists 0
+		json_add_int json_log_size 0
+	fi
+
+	# Check /proc/net/xt_ndpi/
+	local xt_found=0
+	: > "$DBG_TMP.samples"
+	for f in /proc/net/xt_ndpi/proto /proc/net/xt_ndpi/protocols \
+			/proc/net/xt_ndpi/flows /proc/net/xt_ndpi/host_proto; do
+		[ -f "$f" ] || continue
+		xt_found=1
+		head -10 "$f" 2>/dev/null | sed "s|^|$f: |" | cut -c1-220 >> "$DBG_TMP.samples"
+	done
+	json_add_boolean proc_xt_ndpi_exists "$xt_found"
+	json_add_array proc_xt_ndpi_proto_sample
+	while IFS= read -r line; do
+		[ -n "$line" ] && json_add_string "" "$line"
+	done < "$DBG_TMP.samples"
+	rm -f "$DBG_TMP.samples"
+	json_close_array
+
+	json_add_string ndpi_kernel_module "$(lsmod 2>/dev/null | grep -i ndpi)"
+
+	pids=$(pidof ndpiReader 2>/dev/null)
+	pid=${pids%% *}
+	if [ -n "$pid" ]; then
+		json_add_string ndpiReader_cmdline \
+			"$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)"
+	else
+		json_add_string ndpiReader_cmdline ""
+	fi
+	for p in $pids; do cnt=$((cnt + 1)); done
+	json_add_int ndpiReader_count "$cnt"
+	json_add_string ndpiReader_version "$(ndpiReader -V 2>&1 | head -2)"
+
+	json_add_array syslog_ndpi_sample
+	logread 2>/dev/null | grep -i ndpi | tail -10 | cut -c1-300 > "$DBG_TMP" 2>/dev/null
+	while IFS= read -r line; do
+		[ -n "$line" ] && json_add_string "" "$line"
+	done < "$DBG_TMP"
+	rm -f "$DBG_TMP"
+	json_close_array
+
+	json_add_int conntrack_count \
+		"$(wc -l < /proc/net/nf_conntrack 2>/dev/null || echo 0)"
+
+	# DPI snapshot status
+	json_add_string snapshot_file "$SNAPSHOT_FILE"
+	if [ -f "$SNAPSHOT_FILE" ]; then
+		json_add_boolean snapshot_exists 1
+		json_add_int snapshot_size "$(wc -c < "$SNAPSHOT_FILE" 2>/dev/null || echo 0)"
+		json_add_string snapshot_preview "$(head -c 500 "$SNAPSHOT_FILE" 2>/dev/null)"
+	else
+		json_add_boolean snapshot_exists 0
+		json_add_int snapshot_size 0
+	fi
+	if [ -f "$SNAPSHOT_TS" ]; then
+		read -r ts < "$SNAPSHOT_TS"
+		now=$(date +%s)
+		ts=${ts:-0}
+		json_add_int snapshot_last_trigger "$ts"
+		json_add_int snapshot_age "$((now - ts))"
+	fi
+	[ -f "$SNAPSHOT_ERR" ] && \
+		json_add_string snapshot_stderr "$(cat "$SNAPSHOT_ERR" 2>/dev/null)"
+
+	json_dump
+}
+
 # ---------------------------------------------------------------
 # ubus method dispatch
 # ---------------------------------------------------------------
 case "$1" in
 	list)
-		echo '{"getStatus":{},"getMemory":{},"getFlows":{},"getProtocols":{},"getAlerts":{"count":50},"getTraffic":{},"getInterfaceStats":{},"startService":{},"stopService":{},"restartService":{}}'
+		echo '{"getStatus":{},"getMemory":{},"getFlows":{},"getProtocols":{},"getAlerts":{"count":50},"getTraffic":{},"getInterfaceStats":{},"getInterfaces":{},"getDebug":{},"startService":{},"stopService":{},"restartService":{}}'
 		;;
 	call)
 		case "$2" in
@@ -210,16 +684,26 @@ case "$1" in
 			getInterfaceStats)
 				get_interface_stats
 				;;
+			getInterfaces)
+				get_interfaces
+				;;
+			getDebug)
+				get_debug
+				;;
 			startService)
-				/etc/init.d/ndpi start 2>&1
+				/etc/init.d/ndpi start >/dev/null 2>&1
 				echo '{"result":"started"}'
 				;;
 			stopService)
-				/etc/init.d/ndpi stop 2>&1
+				/etc/init.d/ndpi stop >/dev/null 2>&1
+				# Ensure the process is killed even if procd is slow
+				killall ndpiReader >/dev/null 2>&1
+				sleep 1
+				killall -9 ndpiReader >/dev/null 2>&1
 				echo '{"result":"stopped"}'
 				;;
 			restartService)
-				/etc/init.d/ndpi restart 2>&1
+				/etc/init.d/ndpi restart >/dev/null 2>&1
 				echo '{"result":"restarted"}'
 				;;
 		esac

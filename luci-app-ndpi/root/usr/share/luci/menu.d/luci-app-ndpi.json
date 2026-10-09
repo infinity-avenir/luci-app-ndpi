@@ -13,7 +13,7 @@
 	"admin/services/ndpi/dashboard": {
 		"title": "Dashboard",
 		"action": {
-			"type": "template",
+			"type": "view",
 			"path": "ndpi/dashboard"
 		},
 		"order": 10
@@ -21,7 +21,7 @@
 	"admin/services/ndpi/config": {
 		"title": "Configuration",
 		"action": {
-			"type": "cbi",
+			"type": "view",
 			"path": "ndpi/config"
 		},
 		"order": 20
@@ -29,7 +29,7 @@
 	"admin/services/ndpi/dpi": {
 		"title": "DPI Settings",
 		"action": {
-			"type": "cbi",
+			"type": "view",
 			"path": "ndpi/dpi"
 		},
 		"order": 30
@@ -37,7 +37,7 @@
 	"admin/services/ndpi/collector": {
 		"title": "Flow Collection",
 		"action": {
-			"type": "cbi",
+			"type": "view",
 			"path": "ndpi/collector"
 		},
 		"order": 40
@@ -45,7 +45,7 @@
 	"admin/services/ndpi/alerts": {
 		"title": "Alerts & Security",
 		"action": {
-			"type": "cbi",
+			"type": "view",
 			"path": "ndpi/alerts"
 		},
 		"order": 50
@@ -53,7 +53,7 @@
 	"admin/services/ndpi/behavior": {
 		"title": "Behavior Analysis",
 		"action": {
-			"type": "cbi",
+			"type": "view",
 			"path": "ndpi/behavior"
 		},
 		"order": 60

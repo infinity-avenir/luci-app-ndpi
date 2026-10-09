@@ -1,15 +1,5 @@
 #!/bin/sh
 
-# Set up default nDPI configuration and register with LuCI menu
-uci -q batch <<-EOF >/dev/null
-	set ucitrack.@ndpi[0]=ndpi
-	set ucitrack.@ndpi[0].init=ndpi
-	commit ucitrack
-EOF
-
-# Ensure init script is executable
-chmod +x /etc/init.d/ndpi
-
 # Enable service by default
 /etc/init.d/ndpi enable
 

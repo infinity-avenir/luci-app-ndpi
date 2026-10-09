@@ -4,26 +4,16 @@
 		"read": {
 			"ubus": {
 				"ndpi": ["getStatus", "getMemory", "getFlows", "getProtocols",
-				         "getAlerts", "getTraffic", "getInterfaceStats"]
+				         "getAlerts", "getTraffic", "getInterfaceStats",
+				         "getInterfaces", "getDebug"]
 			},
-			"uci": ["ndpi"],
-			"file": {
-				"/tmp/ndpi_flows.json": ["read"],
-				"/tmp/ndpi_alerts.log": ["read"],
-				"/proc/meminfo": ["read"],
-				"/proc/net/nf_conntrack": ["read"],
-				"/sys/class/net/*/statistics/*": ["read"],
-				"/etc/config/ndpi": ["read"]
-			}
+			"uci": ["ndpi"]
 		},
 		"write": {
 			"ubus": {
 				"ndpi": ["startService", "stopService", "restartService"]
 			},
-			"uci": ["ndpi"],
-			"file": {
-				"/etc/config/ndpi": ["write"]
-			}
+			"uci": ["ndpi"]
 		}
 	}
 }
